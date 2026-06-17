@@ -1,0 +1,37 @@
+{
+  "pages": [
+    "pages/login/index",
+    "pages/calendar/index",
+    "pages/course/index",
+    "pages/manage/index",
+    "pages/group/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "智群日程",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f6f7f9"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#6b7280",
+    "selectedColor": "#1677ff",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/calendar/index",
+        "text": "日程"
+      },
+      {
+        "pagePath": "pages/course/index",
+        "text": "课程表"
+      },
+      {
+        "pagePath": "pages/manage/index",
+        "text": "管理"
+      }
+    ]
+  },
+  "sitemapLocation": "sitemap.json"
+}

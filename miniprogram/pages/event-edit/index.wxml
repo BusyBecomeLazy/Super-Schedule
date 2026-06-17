@@ -1,0 +1,49 @@
+<view class="page">
+  <view class="section">
+    <view class="title">{{pageTitle}}</view>
+    <view class="subtitle">保存后会同步到当前群组。</view>
+  </view>
+
+  <view class="panel form">
+    <view class="field">
+      <view class="label">标题</view>
+      <input placeholder="例如：小组会议" value="{{title}}" bindinput="onTitleInput" />
+    </view>
+
+    <view class="field">
+      <view class="label">日期</view>
+      <picker mode="date" value="{{date}}" bindchange="onDateChange">
+        <view class="picker-value">{{date}}</view>
+      </picker>
+    </view>
+
+    <view class="time-row">
+      <view class="field">
+        <view class="label">开始</view>
+        <picker mode="time" value="{{startTime}}" bindchange="onStartTimeChange">
+          <view class="picker-value">{{startTime}}</view>
+        </picker>
+      </view>
+      <view class="field">
+        <view class="label">结束</view>
+        <picker mode="time" value="{{endTime}}" bindchange="onEndTimeChange">
+          <view class="picker-value">{{endTime}}</view>
+        </picker>
+      </view>
+    </view>
+
+    <view class="field">
+      <view class="label">地点</view>
+      <input placeholder="可选" value="{{location}}" bindinput="onLocationInput" />
+    </view>
+
+    <view class="field">
+      <view class="label">备注</view>
+      <textarea placeholder="可选" value="{{note}}" bindinput="onNoteInput" />
+    </view>
+
+    <view class="button" bindtap="submit">{{submitText}}</view>
+    <view wx:if="{{isEdit}}" class="button danger" bindtap="deleteEvent">删除日程</view>
+  </view>
+</view>
+

@@ -1,0 +1,16 @@
+{
+  "name": "zhiqun-schedule-miniprogram",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "validate": "node scripts/validate-miniprogram.js",
+    "validate:mp": "node scripts/validate-miniprogram.js"
+  },
+  "dependencies": {
+    "@vant/weapp": "^1.11.7"
+  },
+  "devDependencies": {
+    "miniprogram-api-typings": "^4.0.8",
+    "typescript": "^5.5.0"
+  }
+}

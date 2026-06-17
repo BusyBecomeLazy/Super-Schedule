@@ -1,0 +1,60 @@
+<view class="page">
+  <view class="section">
+    <view class="title">{{pageTitle}}</view>
+    <view class="subtitle">课程会显示在当前群组的课程表里。</view>
+  </view>
+
+  <view class="panel form">
+    <view class="field">
+      <view class="label">课程名称</view>
+      <input placeholder="例如：高等数学" value="{{name}}" bindinput="onNameInput" />
+    </view>
+
+    <view class="field">
+      <view class="label">教师</view>
+      <input placeholder="可选" value="{{teacher}}" bindinput="onTeacherInput" />
+    </view>
+
+    <view class="field">
+      <view class="label">地点</view>
+      <input placeholder="例如：教一楼205" value="{{location}}" bindinput="onLocationInput" />
+    </view>
+
+    <view class="field">
+      <view class="label">星期</view>
+      <picker mode="selector" range="{{weekdays}}" value="{{weekdayIndex}}" bindchange="onWeekdayChange">
+        <view class="picker-value">周{{weekdays[weekdayIndex]}}</view>
+      </picker>
+    </view>
+
+    <view class="time-row">
+      <view class="field">
+        <view class="label">开始节次</view>
+        <picker mode="selector" range="{{periodLabels}}" value="{{startPeriodIndex}}" bindchange="onStartPeriodChange">
+          <view class="picker-value">{{periodLabels[startPeriodIndex]}}</view>
+        </picker>
+      </view>
+      <view class="field">
+        <view class="label">结束节次</view>
+        <picker mode="selector" range="{{periodLabels}}" value="{{endPeriodIndex}}" bindchange="onEndPeriodChange">
+          <view class="picker-value">{{periodLabels[endPeriodIndex]}}</view>
+        </picker>
+      </view>
+    </view>
+
+    <view class="time-row">
+      <view class="field">
+        <view class="label">开始周</view>
+        <input type="number" value="{{weekStart}}" bindinput="onWeekStartInput" />
+      </view>
+      <view class="field">
+        <view class="label">结束周</view>
+        <input type="number" value="{{weekEnd}}" bindinput="onWeekEndInput" />
+      </view>
+    </view>
+
+    <view class="button" bindtap="submit">{{submitText}}</view>
+    <view wx:if="{{isEdit}}" class="button danger" bindtap="deleteCourse">删除课程</view>
+  </view>
+</view>
+

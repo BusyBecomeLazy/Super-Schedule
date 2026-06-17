@@ -1,0 +1,38 @@
+input {
+  height: 84rpx;
+  border: 1rpx solid #e5e7eb;
+  border-radius: 10rpx;
+  padding: 0 20rpx;
+  margin-bottom: 16rpx;
+  box-sizing: border-box;
+  background: #ffffff;
+}
+
+.group-item {
+  position: relative;
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid #eef0f3;
+}
+
+.group-item:last-child {
+  border-bottom: 0;
+}
+
+.group-item.active {
+  background: #f7fbff;
+}
+
+.schedule-title {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.active-tag {
+  position: absolute;
+  top: 22rpx;
+  right: 0;
+  color: #155bd4;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+

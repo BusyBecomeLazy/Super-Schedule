@@ -1,0 +1,29 @@
+<view class="page">
+  <view class="section">
+    <view class="title">群组</view>
+    <view class="subtitle">创建或加入一个群组后开始共享日程。</view>
+  </view>
+
+  <view class="panel section">
+    <input placeholder="群组名称" value="{{groupName}}" bindinput="onGroupNameInput" />
+    <view class="button section" bindtap="createGroup">创建群组</view>
+    <input placeholder="邀请码" value="{{inviteCode}}" bindinput="onInviteCodeInput" />
+    <view class="button secondary" bindtap="joinGroup">加入群组</view>
+  </view>
+
+  <view class="panel">
+    <view wx:if="{{groups.length === 0}}" class="empty">暂无群组</view>
+    <view
+      wx:for="{{groups}}"
+      wx:key="id"
+      class="group-item {{currentGroupId === item.id ? 'active' : ''}}"
+      bindtap="selectGroup"
+      data-id="{{item.id}}"
+    >
+      <view class="schedule-title">{{item.name}}</view>
+      <view class="subtitle">邀请码：{{item.invite_code}}</view>
+      <view wx:if="{{currentGroupId === item.id}}" class="active-tag">当前群组</view>
+    </view>
+  </view>
+</view>
+

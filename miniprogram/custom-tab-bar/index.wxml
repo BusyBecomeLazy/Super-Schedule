@@ -1,0 +1,35 @@
+<view class="tabbar {{hidden ? 'hidden' : ''}}">
+  <view
+    wx:for="{{list}}"
+    wx:key="pagePath"
+    class="tab-item {{selectedPath === item.pagePath ? 'active' : ''}}"
+    data-path="{{item.pagePath}}"
+    bindtap="switchTab"
+  >
+    <view class="tab-icon icon-{{item.icon}}">
+      <view wx:if="{{item.icon === 'calendar'}}" class="calendar-glyph">
+        <view class="calendar-ring left"></view>
+        <view class="calendar-ring right"></view>
+        <view class="calendar-line"></view>
+        <view class="calendar-dots">
+          <view class="calendar-dot"></view>
+          <view class="calendar-dot"></view>
+          <view class="calendar-dot"></view>
+        </view>
+      </view>
+      <view wx:elif="{{item.icon === 'course'}}" class="book-glyph">
+        <view class="book-spine"></view>
+        <view class="book-line strong"></view>
+        <view class="book-line weak"></view>
+      </view>
+      <view wx:else class="manage-glyph">
+        <view class="slider-line top"></view>
+        <view class="slider-line middle"></view>
+        <view class="slider-line bottom"></view>
+        <view class="slider-dot first"></view>
+        <view class="slider-dot second"></view>
+      </view>
+    </view>
+    <view class="tab-text">{{item.text}}</view>
+  </view>
+</view>

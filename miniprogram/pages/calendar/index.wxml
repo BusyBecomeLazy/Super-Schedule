@@ -1,0 +1,321 @@
+<view class="page calendar-page">
+  <view class="calendar-hero">
+    <view class="week-control">
+      <view class="round-action subtle" bindtap="goToday">今</view>
+      <view class="week-nav">
+        <view class="arrow-button" bindtap="prevWeek">‹</view>
+        <view class="week-info">
+          <view class="week-range">{{weekRangeText}}</view>
+          <view class="week-meta">日程 {{eventCount}} · 课程 {{courseCount}}{{syncStatus === 'syncing' ? ' · 同步中' : ''}}</view>
+        </view>
+        <view class="arrow-button" bindtap="nextWeek">›</view>
+      </view>
+      <view class="action-cluster">
+        <view class="round-action" bindtap="refresh">↻</view>
+        <view wx:if="{{canManageEvents}}" class="round-action primary {{actionMenuVisible ? 'active' : ''}}" bindtap="toggleActionMenu">＋</view>
+      </view>
+    </view>
+    <view wx:if="{{actionMenuVisible && canManageEvents}}" class="action-menu">
+      <view class="menu-item primary" bindtap="openNlpFromMenu">
+        <view class="menu-title">AI 录入</view>
+        <view class="menu-desc">一句话创建或修改</view>
+      </view>
+      <view class="menu-item primary" bindtap="goCreateEventFromMenu">
+        <view class="menu-title">新增日程</view>
+        <view class="menu-desc">手动填写时间地点</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{!currentGroupId}}" class="empty-state section">
+    <view class="empty-title">还没有选择群组</view>
+    <view class="empty-text">先到管理页创建或加入群组。</view>
+    <view class="button compact" bindtap="goManage">去管理页</view>
+  </view>
+
+  <block wx:else>
+    <scroll-view class="schedule-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="schedule-shell">
+        <view class="week-header">
+          <view class="corner-cell">
+            <view class="month-label">{{weekMonthText}}</view>
+          </view>
+          <view
+            wx:for="{{weekDays}}"
+            wx:key="date"
+            class="day-head {{item.isToday ? 'today' : ''}} {{item.isSelected ? 'selected' : ''}}"
+            bindtap="selectDate"
+            data-date="{{item.date}}"
+          >
+            <view class="weekday">周{{item.weekday}}</view>
+            <view class="date-label">{{item.dateLabel}}</view>
+          </view>
+        </view>
+
+        <view wx:if="{{loading}}" class="grid-loading">加载中...</view>
+        <view class="grid-body" style="{{gridRowsStyle}}">
+          <view
+            wx:for="{{periodRows}}"
+            wx:key="period_index"
+            class="period-cell"
+            style="grid-row: {{item.row}}; grid-column: 1;"
+          >
+            <view class="period-index">{{item.period_index}}</view>
+            <view class="period-time">{{item.startText}}</view>
+            <view class="period-time">{{item.endText}}</view>
+          </view>
+
+          <view
+            wx:for="{{gridCells}}"
+            wx:key="key"
+            class="grid-cell"
+            style="grid-row: {{item.row}}; grid-column: {{item.column}};"
+          ></view>
+
+          <view
+            wx:for="{{scheduleStacks}}"
+            wx:key="stackKey"
+            class="schedule-stack {{item.isStack ? 'stacked-card' : ''}}"
+            style="grid-row: {{item.row}} / span {{item.span}}; grid-column: {{item.column}}; z-index: {{item.zIndex}};"
+            bindtap="openScheduleStack"
+            data-stack-key="{{item.stackKey}}"
+            hover-class="schedule-stack-press"
+            hover-stay-time="80"
+          >
+            <block wx:if="{{item.isStack}}">
+              <view
+                wx:for="{{item.layerStyles}}"
+                wx:for-item="layerStyle"
+                wx:key="*this"
+                class="stack-layer"
+                style="{{layerStyle}}"
+              ></view>
+            </block>
+            <view
+              class="schedule-card stack-main-card {{item.type === 'course' ? 'course-card' : 'event-card'}} {{item.compact ? 'compact-card' : ''}}"
+              style="background: {{item.background}};"
+            >
+              <view class="card-title">{{item.title}}</view>
+              <view wx:if="{{item.primaryText}}" class="card-line primary-line">{{item.primaryText}}</view>
+              <view class="card-line secondary-line">{{item.secondaryText}}</view>
+              <view class="card-foot">{{item.typeLabel}}</view>
+            </view>
+          </view>
+        </view>
+
+        <view wx:if="{{!loading && scheduleCards.length === 0}}" class="grid-empty">
+          <view class="grid-empty-content">
+            <view>本周暂无日程</view>
+            <view wx:if="{{canManageEvents}}" class="button compact" bindtap="goCreateEvent">新增日程</view>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </block>
+
+  <view wx:if="{{nlpVisible}}" class="sheet-host">
+    <view class="sheet-backdrop" catchtap="closeNlp"></view>
+    <view class="bottom-sheet">
+      <view class="sheet-handle"></view>
+      <view class="sheet-head">
+        <view>
+          <view class="sheet-title">AI 录入</view>
+          <view class="sheet-subtitle">{{nlpHint}}</view>
+        </view>
+        <view class="sheet-close" bindtap="closeNlp">×</view>
+      </view>
+
+      <scroll-view class="sheet-scroll" scroll-y enhanced>
+        <view class="sheet-form">
+          <view class="field title-field">
+            <view class="label">一句话描述</view>
+            <textarea
+              class="form-control textarea-control nlp-textarea"
+              placeholder="例如：明天下午 3 点开会；把明天下午 3 点会议改到 5 点；删除周三 1 到 2 节数据库课"
+              value="{{nlpText}}"
+              bindinput="onNlpInput"
+            />
+          </view>
+
+          <view wx:if="{{parseResult}}" class="parse-card">
+            <view class="parse-title">{{parseTitle}}</view>
+            <view class="parse-meta">
+              <view class="parse-chip">{{parserSourceText}}</view>
+              <view class="parse-chip">置信度 {{confidenceText}}</view>
+            </view>
+            <view wx:for="{{draftRows}}" wx:key="label" class="draft-row">
+              <view class="draft-label">{{item.label}}</view>
+              <view class="draft-value">{{item.value}}</view>
+            </view>
+            <view wx:if="{{missingFields.length > 0}}" class="missing-panel">
+              <view class="missing-title">需要补充</view>
+              <view wx:for="{{missingFields}}" wx:key="*this" class="missing-item">{{item}}</view>
+            </view>
+            <view wx:if="{{riskNotice}}" class="risk-panel">{{riskNotice}}</view>
+            <view wx:for="{{warnings}}" wx:key="*this" class="warning">{{item}}</view>
+            <view wx:if="{{nlpCandidates.length > 0}}" class="candidate-list">
+              <view class="candidate-title">选择要操作的目标</view>
+              <view
+                wx:for="{{nlpCandidates}}"
+                wx:key="id"
+                class="candidate-item {{selectedCandidateId === item.id ? 'active' : ''}}"
+                catchtap="selectNlpCandidate"
+                data-id="{{item.id}}"
+              >
+                <view class="candidate-main">
+                  <view class="candidate-name">{{item.title}}</view>
+                  <view class="candidate-meta">{{item.subtitle}}</view>
+                  <view wx:if="{{item.meta}}" class="candidate-meta">{{item.meta}}</view>
+                </view>
+                <view class="candidate-state">{{selectedCandidateId === item.id ? '已选' : '选择'}}</view>
+              </view>
+            </view>
+          </view>
+
+          <view class="sheet-actions">
+            <view class="button secondary" bindtap="closeNlp">取消</view>
+            <view wx:if="{{!parseResult}}" class="button {{nlpParsing ? 'disabled' : ''}}" bindtap="parseNlp">{{nlpParsing ? '解析中...' : '解析'}}</view>
+            <view wx:else class="button {{canConfirmNlp ? '' : 'disabled'}}" bindtap="confirmNlp">{{confirmText}}</view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <view wx:if="{{sheetVisible}}" class="sheet-host">
+    <view class="sheet-backdrop" catchtap="closeSheet"></view>
+    <view class="bottom-sheet">
+      <view class="sheet-handle"></view>
+      <view class="sheet-head">
+        <view>
+          <view class="sheet-title">{{sheetTitle}}</view>
+          <view wx:if="{{activeCard}}" class="sheet-subtitle">{{activeCard.date}} · {{activeCard.secondaryText}}</view>
+        </view>
+        <view class="sheet-close" bindtap="closeSheet">×</view>
+      </view>
+
+      <scroll-view class="sheet-scroll" scroll-y enhanced>
+        <view wx:if="{{sheetMode === 'stack'}}" class="sheet-list">
+          <view
+            wx:for="{{sheetItems}}"
+            wx:key="key"
+            class="sheet-list-item"
+            bindtap="selectSheetItem"
+            data-key="{{item.key}}"
+          >
+            <view class="item-color" style="background: {{item.background}};"></view>
+            <view class="item-main">
+              <view class="item-title">{{item.title}}</view>
+              <view class="item-meta">{{item.typeLabel}} · {{item.secondaryText}}</view>
+              <view wx:if="{{item.primaryText}}" class="item-meta">{{item.primaryText}}</view>
+            </view>
+            <view class="item-action">打开</view>
+          </view>
+        </view>
+
+        <view wx:elif="{{sheetMode === 'event-form'}}" class="sheet-form">
+          <view class="field title-field">
+            <view class="label">日程标题</view>
+            <input class="form-control title-input" value="{{eventForm.title}}" bindinput="onEventTitleInput" placeholder="例如：小组会议" />
+          </view>
+          <view class="field">
+            <view class="label">日期</view>
+            <picker mode="date" value="{{eventForm.date}}" bindchange="onEventDateChange">
+              <view class="picker-value has-arrow">{{eventForm.date}}</view>
+            </picker>
+          </view>
+          <view class="time-row">
+            <view class="field">
+              <view class="label">开始</view>
+              <picker mode="time" value="{{eventForm.startTime}}" bindchange="onEventStartTimeChange">
+                <view class="picker-value has-arrow">{{eventForm.startTime}}</view>
+              </picker>
+            </view>
+            <view class="field">
+              <view class="label">结束</view>
+              <picker mode="time" value="{{eventForm.endTime}}" bindchange="onEventEndTimeChange">
+                <view class="picker-value has-arrow">{{eventForm.endTime}}</view>
+              </picker>
+            </view>
+          </view>
+          <view class="field">
+            <view class="label">地点</view>
+            <input class="form-control" value="{{eventForm.location}}" bindinput="onEventLocationInput" placeholder="可选" />
+          </view>
+          <view class="field">
+            <view class="label">备注</view>
+            <textarea class="form-control textarea-control" value="{{eventForm.note}}" bindinput="onEventNoteInput" placeholder="可选" />
+          </view>
+          <view class="sheet-actions">
+            <view wx:if="{{eventForm.isEdit}}" class="button danger" bindtap="deleteEventInSheet">删除</view>
+            <view class="button {{eventSaving ? 'disabled' : ''}}" bindtap="submitEventInSheet">{{eventSaving ? '保存中...' : '保存'}}</view>
+          </view>
+        </view>
+
+        <view wx:elif="{{sheetMode === 'course-form'}}" class="sheet-form">
+          <view class="field title-field">
+            <view class="label">课程名称</view>
+            <input class="form-control title-input" value="{{courseForm.name}}" bindinput="onCourseNameInput" placeholder="例如：高等数学" />
+          </view>
+          <view class="field">
+            <view class="label">教师</view>
+            <input class="form-control" value="{{courseForm.teacher}}" bindinput="onCourseTeacherInput" placeholder="可选" />
+          </view>
+          <view class="field">
+            <view class="label">地点</view>
+            <input class="form-control" value="{{courseForm.location}}" bindinput="onCourseLocationInput" placeholder="可选" />
+          </view>
+          <view class="field">
+            <view class="label">星期</view>
+            <picker mode="selector" range="{{weekLabels}}" value="{{courseForm.weekdayIndex}}" bindchange="onCourseWeekdayChange">
+              <view class="picker-value has-arrow">周{{weekLabels[courseForm.weekdayIndex]}}</view>
+            </picker>
+          </view>
+          <view class="time-row">
+            <view class="field">
+              <view class="label">开始节次</view>
+              <picker mode="selector" range="{{coursePeriodLabels}}" value="{{courseForm.startPeriodIndex}}" bindchange="onCourseStartPeriodChange">
+                <view class="picker-value has-arrow">{{coursePeriodLabels[courseForm.startPeriodIndex]}}</view>
+              </picker>
+            </view>
+            <view class="field">
+              <view class="label">结束节次</view>
+              <picker mode="selector" range="{{coursePeriodLabels}}" value="{{courseForm.endPeriodIndex}}" bindchange="onCourseEndPeriodChange">
+                <view class="picker-value has-arrow">{{coursePeriodLabels[courseForm.endPeriodIndex]}}</view>
+              </picker>
+            </view>
+          </view>
+          <view class="time-row">
+            <view class="field">
+              <view class="label">开始周</view>
+              <input class="form-control" type="number" value="{{courseForm.weekStart}}" bindinput="onCourseWeekStartInput" />
+            </view>
+            <view class="field">
+              <view class="label">结束周</view>
+              <input class="form-control" type="number" value="{{courseForm.weekEnd}}" bindinput="onCourseWeekEndInput" />
+            </view>
+          </view>
+          <view class="sheet-actions">
+            <view wx:if="{{courseForm.isEdit}}" class="button danger" bindtap="deleteCourseInSheet">删除</view>
+            <view class="button {{courseSaving ? 'disabled' : ''}}" bindtap="submitCourseInSheet">{{courseSaving ? '保存中...' : '保存'}}</view>
+          </view>
+        </view>
+
+        <view wx:else class="detail-panel">
+          <view wx:if="{{activeCard.primaryText}}" class="detail-row">
+            <view class="detail-label">地点</view>
+            <view class="detail-value">{{activeCard.primaryText}}</view>
+          </view>
+          <view class="detail-row">
+            <view class="detail-label">时间</view>
+            <view class="detail-value">{{activeCard.secondaryText}}</view>
+          </view>
+          <view class="detail-row">
+            <view class="detail-label">类型</view>
+            <view class="detail-value">{{activeCard.typeLabel}}</view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+</view>

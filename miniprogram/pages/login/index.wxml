@@ -1,0 +1,28 @@
+<view class="page login-page">
+  <view class="section">
+    <view class="title">智群日程</view>
+    <view class="subtitle">共享日程与课程表，从一个群组开始。</view>
+  </view>
+  <view class="panel section">
+    <view class="subtitle">开发阶段可使用模拟 openid 登录；接入微信 AppID 后切换为 wx.login。</view>
+  </view>
+
+  <view class="panel section">
+    <view class="panel-title">开发测试账号</view>
+    <view
+      wx:for="{{devAccounts}}"
+      wx:key="openid"
+      class="account-item {{selectedAccountIndex === index ? 'active' : ''}}"
+      bindtap="selectAccount"
+      data-index="{{index}}"
+    >
+      <view>
+        <view class="account-name">{{item.nickname}}</view>
+        <view class="subtitle">{{item.openid}}</view>
+      </view>
+      <view wx:if="{{selectedAccountIndex === index}}" class="selected-tag">当前</view>
+    </view>
+  </view>
+
+  <view class="button" bindtap="login">使用{{selectedAccountName}}登录</view>
+</view>

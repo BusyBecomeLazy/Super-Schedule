@@ -1,0 +1,45 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 22rpx;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.label {
+  color: #374151;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+input,
+.picker-value {
+  width: 100%;
+  min-height: 84rpx;
+  border: 1rpx solid #e5e7eb;
+  border-radius: 10rpx;
+  padding: 0 20rpx;
+  box-sizing: border-box;
+  background: #ffffff;
+  font-size: 28rpx;
+}
+
+.picker-value {
+  display: flex;
+  align-items: center;
+}
+
+.time-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18rpx;
+}
+
+.button.danger {
+  background: #fff1f0;
+  color: #d93025;
+}
