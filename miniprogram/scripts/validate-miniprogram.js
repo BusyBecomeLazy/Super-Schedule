@@ -234,6 +234,9 @@ mustContain("pages/manage/index.js", "openManageSheet(\"dev\")", "manage dev ent
 mustContain("pages/manage/index.js", "setCustomTabBarHidden", "manage sheet hides tab bar");
 mustContain("pages/manage/index.wxss", ".settings-cell", "manage home settings cells");
 mustContain("pages/manage/index.wxml", "wx:if=\"{{activeSheet}}\" class=\"sheet-host\"", "manage entries use bottom sheet");
+mustContain("pages/manage/index.wxml", "compact-sheet", "manage dev sheet compact class");
+mustContain("pages/manage/index.wxml", "hover-class=\"settings-cell-press\"", "manage settings cells native press feedback");
+mustContain("pages/manage/index.wxml", "hover-class=\"button-press\"", "manage sheet buttons native press feedback");
 mustContain("pages/manage/index.wxml", "activeSheet === 'groups'", "manage groups sheet");
 mustContain("pages/manage/index.wxml", "activeSheet === 'members'", "manage members sheet");
 mustContain("pages/manage/index.wxml", "activeSheet === 'dev'", "manage dev sheet");
@@ -249,8 +252,14 @@ mustContain("pages/manage/index.wxml", "切换开发账号", "manage dev sheet s
 mustContain("pages/manage/index.wxml", "groupsLoading", "manage groups sheet loading state");
 mustContain("pages/manage/index.wxml", "membersLoading", "manage members sheet loading state");
 mustContain("pages/manage/index.wxss", "z-index: 2147483647", "manage sheet high z-index");
+mustContain("pages/manage/index.wxss", ".bottom-sheet.compact-sheet", "manage dev sheet compact height");
+mustContain("pages/manage/index.wxss", "overflow: hidden", "manage sheet clipped rounded corners");
+mustContain("pages/manage/index.wxss", "flex-shrink: 0", "manage sheet fixed header layout");
+mustContain("pages/manage/index.wxss", ".settings-cell-press", "manage settings press style");
+mustContain("pages/manage/index.wxss", ".button-press", "manage button press style");
 mustContain("pages/manage/index.wxss", ".manage-page .button.secondary.form-submit", "manage groups sheet secondary submit is neutral");
 mustContain("pages/manage/index.wxss", ".text-action", "manage groups sheet list actions are text-like");
+mustContain("pages/manage/index.wxss", ".member-cell picker", "manage member role picker fixed layout");
 mustContain("pages/manage/index.wxss", ".select-chip::after", "manage members sheet role picker arrow style");
 mustContain("pages/manage/index.js", "groupCreating", "manage groups create loading guard");
 mustContain("pages/manage/index.js", "groupJoining", "manage groups join loading guard");

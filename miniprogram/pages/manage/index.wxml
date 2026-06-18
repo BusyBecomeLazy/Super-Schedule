@@ -9,7 +9,7 @@
   </view>
 
   <view class="panel settings-panel">
-    <view class="settings-cell" bindtap="goGroups">
+    <view class="settings-cell" hover-class="settings-cell-press" hover-stay-time="80" bindtap="goGroups">
       <view class="settings-icon group-icon">群</view>
       <view class="settings-main">
         <view class="settings-title">群组管理</view>
@@ -18,7 +18,7 @@
       <view class="settings-arrow">›</view>
     </view>
 
-    <view class="settings-cell" bindtap="goMembers">
+    <view class="settings-cell" hover-class="settings-cell-press" hover-stay-time="80" bindtap="goMembers">
       <view class="settings-icon member-icon">员</view>
       <view class="settings-main">
         <view class="settings-title">成员权限设置</view>
@@ -27,7 +27,7 @@
       <view class="settings-arrow">›</view>
     </view>
 
-    <view class="settings-cell" bindtap="goDevOptions">
+    <view class="settings-cell" hover-class="settings-cell-press" hover-stay-time="80" bindtap="goDevOptions">
       <view class="settings-icon dev-icon">开</view>
       <view class="settings-main">
         <view class="settings-title">开发选项</view>
@@ -39,14 +39,14 @@
 
   <view wx:if="{{activeSheet}}" class="sheet-host">
     <view class="sheet-backdrop" catchtap="closeManageSheet"></view>
-    <view class="bottom-sheet {{activeSheet === 'members' ? 'tall-sheet' : ''}}">
+    <view class="bottom-sheet {{activeSheet === 'members' ? 'tall-sheet' : ''}} {{activeSheet === 'dev' ? 'compact-sheet' : ''}}">
       <view class="sheet-handle"></view>
       <view class="sheet-head">
         <view>
           <view class="sheet-title">{{sheetTitle}}</view>
           <view class="sheet-subtitle">{{sheetSubtitle}}</view>
         </view>
-        <view class="sheet-close" bindtap="closeManageSheet">×</view>
+        <view class="sheet-close" hover-class="sheet-close-press" hover-stay-time="80" bindtap="closeManageSheet">×</view>
       </view>
 
       <scroll-view class="sheet-scroll" scroll-y enhanced>
@@ -61,7 +61,7 @@
                 <view class="label">新群组名称</view>
                 <input class="form-control" placeholder-class="input-placeholder" placeholder="例如：产品研发组" value="{{groupName}}" bindinput="onGroupNameInput" />
               </view>
-              <view class="button form-submit {{groupCreating ? 'disabled' : ''}}" bindtap="createGroup">{{groupCreating ? '创建中...' : '创建群组'}}</view>
+              <view class="button form-submit {{groupCreating ? 'disabled' : ''}}" hover-class="button-press" hover-stay-time="80" bindtap="createGroup">{{groupCreating ? '创建中...' : '创建群组'}}</view>
             </view>
 
             <view class="form-block">
@@ -73,7 +73,7 @@
                 <view class="label">邀请码</view>
                 <input class="form-control" placeholder-class="input-placeholder" placeholder="输入成员分享的邀请码" value="{{inviteCode}}" bindinput="onInviteCodeInput" />
               </view>
-              <view class="button secondary form-submit {{groupJoining ? 'disabled' : ''}}" bindtap="joinGroup">{{groupJoining ? '加入中...' : '加入群组'}}</view>
+              <view class="button secondary form-submit {{groupJoining ? 'disabled' : ''}}" hover-class="button-press" hover-stay-time="80" bindtap="joinGroup">{{groupJoining ? '加入中...' : '加入群组'}}</view>
             </view>
           </view>
 
@@ -86,6 +86,8 @@
                 wx:for="{{groups}}"
                 wx:key="id"
                 class="cell group-cell {{currentGroupId === item.id ? 'active' : ''}}"
+                hover-class="cell-press"
+                hover-stay-time="80"
                 bindtap="selectGroup"
                 data-id="{{item.id}}"
               >
@@ -96,6 +98,8 @@
                 <view class="cell-actions">
                   <view
                     class="text-action"
+                    hover-class="text-action-press"
+                    hover-stay-time="80"
                     catchtap="copyInviteCode"
                     data-code="{{item.invite_code}}"
                   >复制</view>
@@ -112,7 +116,7 @@
           <view wx:elif="{{!canManageMembers}}" class="empty">当前身份没有成员管理权限</view>
           <view wx:elif="{{members.length === 0}}" class="empty">暂无成员</view>
           <view wx:else>
-            <view wx:for="{{members}}" wx:key="id" class="cell member-cell">
+            <view wx:for="{{members}}" wx:key="id" class="cell member-cell" hover-class="cell-press" hover-stay-time="80">
               <view class="member-avatar">{{item.avatarInitial}}</view>
               <view class="cell-main member-main">
                 <view class="member-name-row">
@@ -131,7 +135,7 @@
                 disabled="{{item.roleLocked || updatingMemberId === item.id}}"
                 bindchange="onRoleChange"
               >
-                <view class="role-chip select-chip {{item.roleLocked || updatingMemberId === item.id ? 'locked' : ''}}">{{updatingMemberId === item.id ? '更新中' : item.roleLabel}}</view>
+                <view class="role-chip select-chip {{item.roleLocked || updatingMemberId === item.id ? 'locked' : ''}}" hover-class="role-chip-press" hover-stay-time="80">{{updatingMemberId === item.id ? '更新中' : item.roleLabel}}</view>
               </picker>
             </view>
           </view>
@@ -143,7 +147,7 @@
               <view class="dev-title">切换开发账号</view>
               <view class="dev-desc">清除当前登录状态并回到登录页。</view>
             </view>
-            <view class="button compact danger-action" bindtap="switchDevAccount">切换</view>
+            <view class="button compact danger-action" hover-class="button-press" hover-stay-time="80" bindtap="switchDevAccount">切换</view>
           </view>
         </view>
       </scroll-view>
