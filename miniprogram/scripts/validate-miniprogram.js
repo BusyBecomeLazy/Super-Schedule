@@ -246,12 +246,16 @@ mustContain("pages/manage/index.wxml", "class=\"form-block\"", "manage groups sh
 mustContain("pages/manage/index.wxml", "class=\"cell group-cell", "manage groups sheet cell list");
 mustContain("pages/manage/index.wxml", "class=\"member-avatar\"", "manage members sheet avatar");
 mustContain("pages/manage/index.wxml", "切换开发账号", "manage dev sheet switch entry");
+mustContain("pages/manage/index.wxml", "groupsLoading", "manage groups sheet loading state");
+mustContain("pages/manage/index.wxml", "membersLoading", "manage members sheet loading state");
 mustContain("pages/manage/index.wxss", "z-index: 2147483647", "manage sheet high z-index");
 mustContain("pages/manage/index.wxss", ".manage-page .button.secondary.form-submit", "manage groups sheet secondary submit is neutral");
 mustContain("pages/manage/index.wxss", ".text-action", "manage groups sheet list actions are text-like");
 mustContain("pages/manage/index.wxss", ".select-chip::after", "manage members sheet role picker arrow style");
 mustContain("pages/manage/index.js", "groupCreating", "manage groups create loading guard");
 mustContain("pages/manage/index.js", "groupJoining", "manage groups join loading guard");
+mustContain("pages/manage/index.js", "groupsLoading", "manage groups request loading guard");
+mustContain("pages/manage/index.js", "membersLoading", "manage members request loading guard");
 mustContain("pages/manage/index.js", "avatarInitial", "manage members avatar initial");
 mustContain("pages/manage/index.js", "updatingMemberId", "manage members role update loading guard");
 mustContain("pages/manage/index.js", "切换开发账号", "manage dev account switch confirmation");

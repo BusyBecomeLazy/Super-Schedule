@@ -79,32 +79,36 @@
 
           <view class="sheet-section">
             <view class="section-title">当前群组</view>
-            <view wx:if="{{groups.length === 0}}" class="empty compact-empty">暂无群组</view>
-            <view
-              wx:for="{{groups}}"
-              wx:key="id"
-              class="cell group-cell {{currentGroupId === item.id ? 'active' : ''}}"
-              bindtap="selectGroup"
-              data-id="{{item.id}}"
-            >
-              <view class="cell-main">
-                <view class="cell-title">{{item.name}}</view>
-                <view class="cell-desc">邀请码：{{item.invite_code}}</view>
+            <view wx:if="{{groupsLoading}}" class="empty compact-empty">加载群组中...</view>
+            <view wx:elif="{{groups.length === 0}}" class="empty compact-empty">暂无群组</view>
+            <block wx:else>
+              <view
+                wx:for="{{groups}}"
+                wx:key="id"
+                class="cell group-cell {{currentGroupId === item.id ? 'active' : ''}}"
+                bindtap="selectGroup"
+                data-id="{{item.id}}"
+              >
+                <view class="cell-main">
+                  <view class="cell-title">{{item.name}}</view>
+                  <view class="cell-desc">邀请码：{{item.invite_code}}</view>
+                </view>
+                <view class="cell-actions">
+                  <view
+                    class="text-action"
+                    catchtap="copyInviteCode"
+                    data-code="{{item.invite_code}}"
+                  >复制</view>
+                  <view wx:if="{{currentGroupId === item.id}}" class="state-tag">当前</view>
+                </view>
               </view>
-              <view class="cell-actions">
-                <view
-                  class="text-action"
-                  catchtap="copyInviteCode"
-                  data-code="{{item.invite_code}}"
-                >复制</view>
-                <view wx:if="{{currentGroupId === item.id}}" class="state-tag">当前</view>
-              </view>
-            </view>
+            </block>
           </view>
         </view>
 
         <view wx:elif="{{activeSheet === 'members'}}" class="sheet-content">
           <view wx:if="{{!currentGroupId}}" class="empty">请先创建或加入群组</view>
+          <view wx:elif="{{membersLoading}}" class="empty">加载成员中...</view>
           <view wx:elif="{{!canManageMembers}}" class="empty">当前身份没有成员管理权限</view>
           <view wx:elif="{{members.length === 0}}" class="empty">暂无成员</view>
           <view wx:else>

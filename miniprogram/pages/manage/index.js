@@ -62,6 +62,8 @@ Page({
     canManageMembers: false,
     groups: [],
     members: [],
+    groupsLoading: false,
+    membersLoading: false,
     groupName: "",
     inviteCode: "",
     groupCreating: false,
@@ -222,6 +224,7 @@ Page({
   },
 
   async loadGroups() {
+    this.setData({ groupsLoading: true });
     try {
       const groups = await request("/groups");
       this.setData({ groups });
@@ -245,6 +248,8 @@ Page({
     } catch (error) {
       console.error("load groups failed", error);
       wx.redirectTo({ url: "/pages/login/index" });
+    } finally {
+      this.setData({ groupsLoading: false });
     }
   },
 
@@ -335,27 +340,32 @@ Page({
   async loadAccessAndMembers() {
     const groupId = getStoredGroupId();
     if (!groupId) {
-      this.setData({ currentGroupId: null, access: null, canManageMembers: false, members: [] });
+      this.setData({ currentGroupId: null, access: null, canManageMembers: false, members: [], membersLoading: false });
       refreshTabBar(this);
       return;
     }
+    this.setData({ currentGroupId: groupId, membersLoading: true });
     let access = null;
     try {
       access = await refreshGroupAccess(groupId);
     } catch (error) {
       console.error("load member access failed", error);
-      this.setData({ access: null, canManageMembers: false, members: [] });
+      this.setData({ access: null, canManageMembers: false, members: [], membersLoading: false });
       return;
     }
     const canManageMembers = Boolean(access && access.permissions.can_manage_members);
     this.setData({ access, canManageMembers, currentGroupId: groupId });
     refreshTabBar(this);
     if (!canManageMembers) {
-      this.setData({ members: [] });
+      this.setData({ members: [], membersLoading: false });
       return;
     }
-    connectGroupSocket(groupId, this.handleSocketMessage.bind(this));
-    await this.loadMembers();
+    try {
+      connectGroupSocket(groupId, this.handleSocketMessage.bind(this));
+      await this.loadMembers();
+    } finally {
+      this.setData({ membersLoading: false });
+    }
   },
 
   handleSocketMessage(message) {
