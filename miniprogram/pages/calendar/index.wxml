@@ -37,9 +37,6 @@
     <scroll-view class="schedule-scroll" scroll-x enhanced show-scrollbar="{{false}}">
       <view class="schedule-shell">
         <view class="week-header">
-          <view class="corner-cell">
-            <view class="month-label">{{weekMonthText}}</view>
-          </view>
           <view
             wx:for="{{weekDays}}"
             wx:key="date"
@@ -53,52 +50,51 @@
         </view>
 
         <view wx:if="{{loading}}" class="grid-loading">加载中...</view>
-        <view class="grid-body" style="{{gridRowsStyle}}">
+        <view class="time-bands">
           <view
-            wx:for="{{periodRows}}"
-            wx:key="period_index"
-            class="period-cell"
-            style="grid-row: {{item.row}}; grid-column: 1;"
+            wx:for="{{timeBands}}"
+            wx:for-item="band"
+            wx:key="label"
+            class="time-band time-band-{{band.key}}"
           >
-            <view class="period-index">{{item.period_index}}</view>
-            <view class="period-time">{{item.startText}}</view>
-            <view class="period-time">{{item.endText}}</view>
-          </view>
-
-          <view
-            wx:for="{{gridCells}}"
-            wx:key="key"
-            class="grid-cell"
-            style="grid-row: {{item.row}}; grid-column: {{item.column}};"
-          ></view>
-
-          <view
-            wx:for="{{scheduleStacks}}"
-            wx:key="stackKey"
-            class="schedule-stack {{item.isStack ? 'stacked-card' : ''}}"
-            style="grid-row: {{item.row}} / span {{item.span}}; grid-column: {{item.column}}; z-index: {{item.zIndex}};"
-            bindtap="openScheduleStack"
-            data-stack-key="{{item.stackKey}}"
-            hover-class="schedule-stack-press"
-            hover-stay-time="80"
-          >
-            <block wx:if="{{item.isStack}}">
+            <view class="time-band-header">
+              <view class="time-band-title">{{band.label}}</view>
+              <view class="time-band-range">{{band.rangeText}}</view>
+            </view>
+            <view class="time-band-grid">
               <view
-                wx:for="{{item.layerStyles}}"
-                wx:for-item="layerStyle"
-                wx:key="*this"
-                class="stack-layer"
-                style="{{layerStyle}}"
-              ></view>
-            </block>
-            <view
-              class="schedule-card stack-main-card {{item.type === 'course' ? 'course-card' : 'event-card'}} {{item.compact ? 'compact-card' : ''}}"
-              style="background: {{item.background}};"
-            >
-              <view class="card-title">{{item.title}}</view>
-              <view wx:if="{{item.primaryText}}" class="card-line primary-line">{{item.primaryText}}</view>
-              <view class="card-line secondary-line">{{item.secondaryText}}</view>
-              <view class="card-foot">{{item.typeLabel}}</view>
+                wx:for="{{band.cells}}"
+                wx:for-item="cell"
+                wx:key="key"
+                class="time-band-day"
+              >
+                <view
+                  wx:for="{{cell.cards}}"
+                  wx:for-item="group"
+                  wx:key="key"
+                  class="schedule-stack {{group.isStack ? 'stacked-card' : ''}}"
+                  bindtap="openScheduleCardGroup"
+                  data-key="{{group.key}}"
+                  hover-class="schedule-stack-press"
+                  hover-stay-time="80"
+                >
+                  <view
+                    wx:for="{{group.layerStyles}}"
+                    wx:for-item="layer"
+                    wx:key="key"
+                    class="stack-layer"
+                    style="{{layer.style}}"
+                  ></view>
+                  <view
+                    class="schedule-card {{group.main.type === 'course' ? 'course-card' : 'event-card'}}"
+                    style="background: {{group.main.background}};"
+                  >
+                    <view class="card-time">{{group.main.timeText}}</view>
+                    <view class="card-title">{{group.main.title}}</view>
+                    <view class="card-meta">{{group.main.metaText}}</view>
+                  </view>
+                </view>
+              </view>
             </view>
           </view>
         </view>

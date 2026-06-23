@@ -3,6 +3,7 @@ const { connectGroupSocket } = require("../../utils/socket");
 const { refreshGroupAccess, refreshTabBar } = require("../../utils/access");
 const { toastTitle } = require("../../utils/errors");
 const { clearStoredGroupId, getStoredToken } = require("../../utils/session");
+const { buildTimeBandCardGroups, buildTimeBands, buildTimeSegments, findTimeSegment } = require("../../utils/schedule-segments");
 
 const weekdays = ["一", "二", "三", "四", "五", "六", "日"];
 const courseColors = [
@@ -43,14 +44,18 @@ function getWeekStart(dateString) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-function calculateTeachingWeek(startDate) {
-  const today = parseDate(todayString());
+function calculateTeachingWeek(startDate, targetDate = todayString()) {
+  const today = parseDate(targetDate);
   const start = parseDate(startDate);
   const days = Math.floor((today.getTime() - start.getTime()) / 86400000);
   if (days < 0) {
     return 1;
   }
   return Math.min(30, Math.floor(days / 7) + 1);
+}
+
+function currentSyncedWeekStart(weekDays) {
+  return getApp().globalData.scheduleWeekStart || (weekDays && weekDays[0] && weekDays[0].date) || getWeekStart(todayString());
 }
 
 function formatDateLabel(dateString) {
@@ -65,6 +70,11 @@ function formatMonthLabel(dateString) {
 
 function formatClock(value) {
   return String(value || "").slice(0, 5);
+}
+
+function minutesFromClock(value) {
+  const parts = formatClock(value).split(":").map(Number);
+  return parts[0] * 60 + parts[1];
 }
 
 function courseColorIndex(course) {
@@ -205,10 +215,12 @@ Page({
     weekDays: [],
     periods: [],
     periodRows: [],
-    gridCells: [],
-    gridRowsStyle: "",
+    timeSegments: [],
+    timeBands: [],
     courses: [],
     courseCards: [],
+    courseCardGroups: [],
+    courseStackItems: [],
     periodLabels: ["1节", "2节"],
     canManageCourses: false,
     actionMenuVisible: false,
@@ -257,6 +269,8 @@ Page({
         hasSemester: false,
         courses: [],
         courseCards: [],
+        courseCardGroups: [],
+        timeBands: [],
         periods: [],
         canManageCourses: false,
         actionMenuVisible: false
@@ -286,11 +300,11 @@ Page({
       access = await refreshGroupAccess(groupId);
     } catch (error) {
       console.error("load course access failed", error);
-      this.setData({ hasSemester: false, courses: [], courseCards: [], canManageCourses: false });
+      this.setData({ hasSemester: false, courses: [], courseCards: [], courseCardGroups: [], timeBands: [], canManageCourses: false });
       return;
     }
     if (!access) {
-      this.setData({ hasSemester: false, courses: [], courseCards: [], canManageCourses: false });
+      this.setData({ hasSemester: false, courses: [], courseCards: [], courseCardGroups: [], timeBands: [], canManageCourses: false });
       return;
     }
     this.setData({ canManageCourses: Boolean(access.permissions.can_manage_courses) });
@@ -305,10 +319,14 @@ Page({
         this.setData({ periods, hasSemester: false, semester: null, courses: [] });
         return;
       }
-      const week = this.data.weekInitialized ? this.data.week : calculateTeachingWeek(semester.start_date);
+      const syncedWeekStart = currentSyncedWeekStart(this.data.weekDays);
+      const syncedSelectedDate = getApp().globalData.scheduleSelectedDate;
+      const teachingDate =
+        syncedSelectedDate && getWeekStart(syncedSelectedDate) === syncedWeekStart ? syncedSelectedDate : syncedWeekStart;
+      const week = calculateTeachingWeek(semester.start_date, teachingDate);
       const courses = await request(`/groups/${groupId}/courses?week=${week}`);
       this.setData(
-        Object.assign({}, this.buildGridState({ semester, periods, courses, week }), {
+        Object.assign({}, this.buildGridState({ semester, periods, courses, week, weekStart: syncedWeekStart }), {
           hasSemester: true,
           weekInitialized: true
         })
@@ -319,8 +337,9 @@ Page({
     }
   },
 
-  buildGridState({ semester, periods, courses, week }) {
-    const weekBase = addDays(getWeekStart(semester.start_date), (week - 1) * 7);
+  buildGridState({ semester, periods, courses, week, weekStart }) {
+    const weekBase = weekStart || getWeekStart(todayString());
+    getApp().globalData.scheduleWeekStart = weekBase;
     const today = todayString();
     const weekDays = weekdays.map((weekday, index) => {
       const date = addDays(weekBase, index);
@@ -335,25 +354,21 @@ Page({
       ...period,
       row: index + 1,
       startText: formatClock(period.start_time),
-      endText: formatClock(period.end_time)
+      endText: formatClock(period.end_time),
+      startMinute: minutesFromClock(period.start_time),
+      endMinute: minutesFromClock(period.end_time)
     }));
     const periodIndexMap = {};
     periodRows.forEach((period) => {
       periodIndexMap[period.period_index] = period.row;
     });
-    const gridCells = [];
-    periodRows.forEach((period) => {
-      for (let day = 1; day <= 7; day += 1) {
-        gridCells.push({
-          key: `${period.period_index}-${day}`,
-          row: period.row,
-          column: day + 1
-        });
-      }
-    });
+    const timeSegments = buildTimeSegments(periodRows);
     const courseCards = courses.map((course) => {
       const color = colorForCourse(course);
       const row = periodIndexMap[course.start_period] || course.start_period;
+      const startPeriod = periodRows.find((period) => period.period_index === course.start_period);
+      const endPeriod = periodRows.find((period) => period.period_index === course.end_period) || startPeriod;
+      const segment = findTimeSegment(timeSegments, row);
       const span = Math.max(1, Number(course.end_period || course.start_period) - Number(course.start_period) + 1);
       return {
         ...course,
@@ -362,6 +377,13 @@ Page({
         span,
         background: color.background,
         shadow: color.shadow,
+        dayIndex: Math.max(0, Number(course.day_of_week || 1) - 1),
+        segmentKey: segment ? segment.key : "",
+        sortOrder: startPeriod ? startPeriod.startMinute : row,
+        startMinute: startPeriod ? startPeriod.startMinute : row * 60,
+        endMinute: endPeriod ? endPeriod.endMinute : (startPeriod ? startPeriod.endMinute : row * 60 + 45),
+        timeText: startPeriod && endPeriod ? `${startPeriod.startText}-${endPeriod.endText}` : `${course.start_period}-${course.end_period}\u8282`,
+        metaText: course.location || course.teacher || `${course.start_period}-${course.end_period}\u8282`,
         periodText: `${course.start_period}-${course.end_period}节`,
         weekText: `第 ${course.week_start}-${course.week_end} 周`,
         teacherText: course.teacher || "",
@@ -369,6 +391,8 @@ Page({
         compact: span <= 1
       };
     });
+    const courseCardGroups = buildTimeBandCardGroups(courseCards);
+    const timeBands = buildTimeBands(timeSegments, courseCardGroups);
     return {
       semester,
       week,
@@ -379,10 +403,11 @@ Page({
       periods,
       periodLabels: periods.map((period) => `${period.period_index}节`),
       periodRows,
-      gridCells,
-      gridRowsStyle: `grid-template-rows: repeat(${Math.max(periodRows.length, 1)}, 116rpx);`,
+      timeSegments,
+      timeBands,
       courses,
-      courseCards
+      courseCards,
+      courseCardGroups
     };
   },
 
@@ -449,7 +474,11 @@ Page({
       wx.showToast({ title: "已经是第1周", icon: "none" });
       return;
     }
-    this.setData({ week: this.data.week - 1, weekInitialized: true });
+    const weekStart = addDays(currentSyncedWeekStart(this.data.weekDays), -7);
+    const app = getApp();
+    app.globalData.scheduleWeekStart = weekStart;
+    app.globalData.scheduleSelectedDate = weekStart;
+    this.setData({ weekInitialized: false });
     this.loadTimetable();
   },
 
@@ -459,7 +488,11 @@ Page({
       wx.showToast({ title: "最多查看第30周", icon: "none" });
       return;
     }
-    this.setData({ week: this.data.week + 1, weekInitialized: true });
+    const weekStart = addDays(currentSyncedWeekStart(this.data.weekDays), 7);
+    const app = getApp();
+    app.globalData.scheduleWeekStart = weekStart;
+    app.globalData.scheduleSelectedDate = weekStart;
+    this.setData({ weekInitialized: false });
     this.loadTimetable();
   },
 
@@ -468,9 +501,12 @@ Page({
     if (!this.data.semester) {
       return;
     }
+    const selectedDate = todayString();
+    const app = getApp();
+    app.globalData.scheduleSelectedDate = selectedDate;
+    app.globalData.scheduleWeekStart = getWeekStart(selectedDate);
     this.setData({
-      week: calculateTeachingWeek(this.data.semester.start_date),
-      weekInitialized: true
+      weekInitialized: false
     });
     this.loadTimetable();
   },
@@ -537,6 +573,39 @@ Page({
     if (!course) {
       return;
     }
+    this.openCourseCard(course);
+  },
+
+  openCourseCardGroup(event) {
+    const key = event.currentTarget.dataset.key;
+    const group = this.data.courseCardGroups.find((item) => item.key === key);
+    if (!group) {
+      return;
+    }
+    if (group.isStack) {
+      this.setCustomTabBarHidden(true);
+      this.setData({
+        sheetVisible: true,
+        sheetMode: "course-stack",
+        sheetTitle: "\u91cd\u53e0\u8bfe\u7a0b",
+        courseStackItems: group.items,
+        activeCourse: null,
+        actionMenuVisible: false
+      });
+      return;
+    }
+    this.openCourseCard(group.main);
+  },
+
+  selectCourseStackItem(event) {
+    const courseId = event.currentTarget.dataset.id;
+    const course = this.data.courseStackItems.find((item) => Number(item.id) === Number(courseId));
+    if (course) {
+      this.openCourseCard(course);
+    }
+  },
+
+  openCourseCard(course) {
     if (!this.data.canManageCourses) {
       this.openCourseDetailSheet(course);
       return;
@@ -551,6 +620,7 @@ Page({
       sheetMode: "course-detail",
       sheetTitle: course.name,
       activeCourse: course,
+      courseStackItems: [],
       actionMenuVisible: false
     });
   },
@@ -562,6 +632,7 @@ Page({
       sheetMode: "",
       sheetTitle: "",
       activeCourse: null,
+      courseStackItems: [],
       courseSaving: false
     });
   },
@@ -615,6 +686,7 @@ Page({
       sheetMode: "course-form",
       sheetTitle: course ? "编辑课程" : "新增课程",
       activeCourse: course || null,
+      courseStackItems: [],
       courseForm: form,
       actionMenuVisible: false
     });

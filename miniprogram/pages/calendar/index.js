@@ -3,6 +3,7 @@ const { connectGroupSocket } = require("../../utils/socket");
 const { refreshGroupAccess, refreshTabBar } = require("../../utils/access");
 const { toastTitle } = require("../../utils/errors");
 const { clearStoredGroupId, getStoredToken } = require("../../utils/session");
+const { buildTimeBandCardGroups, buildTimeBands, buildTimeSegments, findTimeSegment } = require("../../utils/schedule-segments");
 
 const weekLabels = ["一", "二", "三", "四", "五", "六", "日"];
 const courseColors = [
@@ -70,11 +71,15 @@ function formatTime(value) {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function formatClock(value) {
+  return String(value || "").slice(0, 5);
+}
+
 function minutesFromClock(value) {
   if (!value) {
     return 0;
   }
-  const parts = String(value).slice(0, 5).split(":").map(Number);
+  const parts = formatClock(value).split(":").map(Number);
   return parts[0] * 60 + parts[1];
 }
 
@@ -357,9 +362,10 @@ Page({
     weekDays: [],
     periods: [],
     periodRows: [],
-    gridCells: [],
-    gridRowsStyle: "",
+    timeSegments: [],
+    timeBands: [],
     scheduleCards: [],
+    scheduleCardGroups: [],
     scheduleStacks: [],
     eventCount: 0,
     courseCount: 0,
@@ -429,6 +435,8 @@ Page({
       this.setData({
         currentGroupId: null,
         scheduleCards: [],
+        scheduleCardGroups: [],
+        timeBands: [],
         scheduleStacks: [],
         eventCount: 0,
         courseCount: 0,
@@ -440,13 +448,15 @@ Page({
       return;
     }
     const groupId = getApp().globalData.currentGroupId;
-    const selectedDate = this.data.selectedDate || todayString();
+    const selectedDate = getApp().globalData.scheduleSelectedDate || this.data.selectedDate || todayString();
     this.setData({ currentGroupId: groupId });
     refreshTabBar(this);
     this.rebuildWeek(selectedDate);
     if (!groupId) {
       this.setData({
         scheduleCards: [],
+        scheduleCardGroups: [],
+        timeBands: [],
         scheduleStacks: [],
         eventCount: 0,
         courseCount: 0,
@@ -461,11 +471,11 @@ Page({
       access = await refreshGroupAccess(groupId);
     } catch (error) {
       console.error("load calendar access failed", error);
-      this.setData({ scheduleCards: [], scheduleStacks: [], canManageEvents: false, canManageCourses: false });
+      this.setData({ scheduleCards: [], scheduleCardGroups: [], timeBands: [], scheduleStacks: [], canManageEvents: false, canManageCourses: false });
       return;
     }
     if (!access) {
-      this.setData({ scheduleCards: [], scheduleStacks: [], canManageEvents: false, canManageCourses: false });
+      this.setData({ scheduleCards: [], scheduleCardGroups: [], timeBands: [], scheduleStacks: [], canManageEvents: false, canManageCourses: false });
       return;
     }
     const canManageEvents = Boolean(access.permissions.can_manage_events);
@@ -486,6 +496,9 @@ Page({
 
   rebuildWeek(selectedDate) {
     const weekStart = getWeekStart(selectedDate);
+    const app = getApp();
+    app.globalData.scheduleSelectedDate = selectedDate;
+    app.globalData.scheduleWeekStart = weekStart;
     const today = todayString();
     const weekDays = weekLabels.map((weekday, index) => {
       const date = addDays(weekStart, index);
@@ -510,7 +523,7 @@ Page({
   async loadWeekSchedule() {
     const groupId = getApp().globalData.currentGroupId;
     if (!groupId) {
-      this.setData({ scheduleCards: [], scheduleStacks: [], eventCount: 0, courseCount: 0, loading: false });
+      this.setData({ scheduleCards: [], scheduleCardGroups: [], timeBands: [], scheduleStacks: [], eventCount: 0, courseCount: 0, loading: false });
       return;
     }
     const dates = this.data.weekDays.map((day) => day.date);
@@ -541,8 +554,8 @@ Page({
     const periodRows = periods.map((period, index) => ({
       ...period,
       row: index + 1,
-      startText: formatTime(period.start_time),
-      endText: formatTime(period.end_time),
+      startText: formatClock(period.start_time),
+      endText: formatClock(period.end_time),
       startMinute: minutesFromClock(period.start_time),
       endMinute: minutesFromClock(period.end_time)
     }));
@@ -550,20 +563,14 @@ Page({
     periodRows.forEach((period) => {
       periodIndexMap[period.period_index] = period.row;
     });
-    const gridCells = [];
-    periodRows.forEach((period) => {
-      for (let day = 1; day <= 7; day += 1) {
-        gridCells.push({
-          key: `${period.period_index}-${day}`,
-          row: period.row,
-          column: day + 1
-        });
-      }
-    });
+    const timeSegments = buildTimeSegments(periodRows);
     const scheduleCards = rawItems.map((item) => {
       if (item.type === "course") {
         const color = pickColor(courseColors, item);
         const row = periodIndexMap[item.start_period] || Number(item.start_period || 1);
+        const startPeriod = periodRows.find((period) => period.period_index === item.start_period);
+        const endPeriod = periodRows.find((period) => period.period_index === item.end_period) || startPeriod;
+        const segment = findTimeSegment(timeSegments, row);
         const span = Math.max(1, Number(item.end_period || item.start_period) - Number(item.start_period) + 1);
         return {
           key: `course-${item.id}-${item.date}`,
@@ -576,6 +583,13 @@ Page({
           span,
           background: color.background,
           shadow: color.shadow,
+          dayIndex: item.dayIndex,
+          segmentKey: segment ? segment.key : "",
+          sortOrder: startPeriod ? startPeriod.startMinute : row,
+          startMinute: startPeriod ? startPeriod.startMinute : row * 60,
+          endMinute: endPeriod ? endPeriod.endMinute : (startPeriod ? startPeriod.endMinute : row * 60 + 45),
+          timeText: startPeriod && endPeriod ? `${startPeriod.startText}-${endPeriod.endText}` : `${item.start_period}-${item.end_period}\u8282`,
+          metaText: item.location || `${item.start_period}-${item.end_period}\u8282`,
           typeLabel: "课程",
           primaryText: item.location || "",
           secondaryText: `${item.start_period}-${item.end_period}节`,
@@ -584,6 +598,7 @@ Page({
       }
       const placement = eventPlacement(periodRows, item.start_time, item.end_time);
       const color = pickColor(eventColors, item);
+      const segment = findTimeSegment(timeSegments, placement.row);
       return {
         key: `event-${item.id}-${item.date}`,
         id: item.id,
@@ -595,22 +610,30 @@ Page({
         span: placement.span,
         background: color.background,
         shadow: color.shadow,
+        dayIndex: item.dayIndex,
+        segmentKey: segment ? segment.key : "",
+        sortOrder: minutesFromDateTime(item.start_time),
+        startMinute: minutesFromDateTime(item.start_time),
+        endMinute: Math.max(minutesFromDateTime(item.start_time) + 1, minutesFromDateTime(item.end_time)),
+        timeText: `${formatTime(item.start_time)}-${formatTime(item.end_time)}`,
+        metaText: item.location || item.note || "\u65e5\u7a0b",
         typeLabel: "日程",
         primaryText: item.location || "",
         secondaryText: `${formatTime(item.start_time)}-${formatTime(item.end_time)}`,
         compact: placement.span <= 1
       };
     });
-    const scheduleStacks = buildScheduleStacks(scheduleCards);
+    const scheduleCardGroups = buildTimeBandCardGroups(scheduleCards, { priorityTypes: ["event"] });
+    const timeBands = buildTimeBands(timeSegments, scheduleCardGroups);
     const eventCount = scheduleCards.filter((item) => item.type === "event").length;
     const courseCount = scheduleCards.filter((item) => item.type === "course").length;
     return {
       periods,
       periodRows,
-      gridCells,
-      gridRowsStyle: `grid-template-rows: repeat(${Math.max(periodRows.length, 1)}, 108rpx);`,
+      timeSegments,
+      timeBands,
       scheduleCards,
-      scheduleStacks,
+      scheduleCardGroups,
       eventCount,
       courseCount
     };
@@ -736,6 +759,27 @@ Page({
     }
   },
 
+  openScheduleCardGroup(event) {
+    const key = event.currentTarget.dataset.key;
+    const group = this.data.scheduleCardGroups.find((item) => item.key === key);
+    if (!group) {
+      return;
+    }
+    if (group.isStack) {
+      this.setCustomTabBarHidden(true);
+      this.setData({
+        sheetVisible: true,
+        sheetMode: "stack",
+        sheetTitle: "\u91cd\u53e0\u5b89\u6392",
+        sheetItems: group.items,
+        activeCard: null,
+        actionMenuVisible: false
+      });
+      return;
+    }
+    this.openScheduleCard(group.main);
+  },
+
   openScheduleStack(event) {
     const stackKey = event.currentTarget.dataset.stackKey;
     const stack = this.data.scheduleStacks.find((item) => item.stackKey === stackKey);
@@ -755,6 +799,14 @@ Page({
       return;
     }
     this.openScheduleCard(stack);
+  },
+
+  openScheduleCardByKey(event) {
+    const key = event.currentTarget.dataset.key;
+    const card = this.data.scheduleCards.find((item) => item.key === key);
+    if (card) {
+      this.openScheduleCard(card);
+    }
   },
 
   selectSheetItem(event) {

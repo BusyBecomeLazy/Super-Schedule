@@ -44,9 +44,6 @@
     <scroll-view class="timetable-scroll" scroll-x enhanced show-scrollbar="{{false}}">
       <view class="timetable-shell">
         <view class="week-header">
-          <view class="corner-cell">
-            <view class="month-label">{{weekMonthText}}</view>
-          </view>
           <view
             wx:for="{{weekDays}}"
             wx:key="date"
@@ -57,39 +54,49 @@
           </view>
         </view>
 
-        <view class="grid-body" style="{{gridRowsStyle}}">
+        <view class="time-bands">
           <view
-            wx:for="{{periodRows}}"
-            wx:key="period_index"
-            class="period-cell"
-            style="grid-row: {{item.row}}; grid-column: 1;"
+            wx:for="{{timeBands}}"
+            wx:for-item="band"
+            wx:key="label"
+            class="time-band time-band-{{band.key}}"
           >
-            <view class="period-index">{{item.period_index}}</view>
-            <view class="period-time">{{item.startText}}</view>
-            <view class="period-time">{{item.endText}}</view>
-          </view>
-
-          <view
-            wx:for="{{gridCells}}"
-            wx:key="key"
-            class="grid-cell"
-            style="grid-row: {{item.row}}; grid-column: {{item.column}};"
-          ></view>
-
-          <view
-            wx:for="{{courseCards}}"
-            wx:key="id"
-            class="course-card {{item.compact ? 'compact-card' : ''}}"
-            style="grid-row: {{item.row}} / span {{item.span}}; grid-column: {{item.column}}; background: {{item.background}};"
-            bindtap="goEditCourse"
-            data-id="{{item.id}}"
-            hover-class="course-card-press"
-            hover-stay-time="80"
-          >
-            <view class="course-name">{{item.name}}</view>
-            <view wx:if="{{item.locationText}}" class="course-line">{{item.locationText}}</view>
-            <view wx:if="{{item.teacherText}}" class="course-line">{{item.teacherText}}</view>
-            <view class="course-foot">{{item.periodText}}</view>
+            <view class="time-band-header">
+              <view class="time-band-title">{{band.label}}</view>
+              <view class="time-band-range">{{band.rangeText}}</view>
+            </view>
+            <view class="time-band-grid">
+              <view
+                wx:for="{{band.cells}}"
+                wx:for-item="cell"
+                wx:key="key"
+                class="time-band-day"
+              >
+                <view
+                  wx:for="{{cell.cards}}"
+                  wx:for-item="group"
+                  wx:key="key"
+                  class="course-stack {{group.isStack ? 'stacked-card' : ''}}"
+                  bindtap="openCourseCardGroup"
+                  data-key="{{group.key}}"
+                  hover-class="course-stack-press"
+                  hover-stay-time="80"
+                >
+                  <view
+                    wx:for="{{group.layerStyles}}"
+                    wx:for-item="layer"
+                    wx:key="key"
+                    class="stack-layer"
+                    style="{{layer.style}}"
+                  ></view>
+                  <view class="course-card" style="background: {{group.main.background}};">
+                    <view class="course-time">{{group.main.timeText}}</view>
+                    <view class="course-name">{{group.main.name}}</view>
+                    <view class="course-meta">{{group.main.metaText}}</view>
+                  </view>
+                </view>
+              </view>
+            </view>
           </view>
         </view>
 
@@ -185,7 +192,25 @@
       </view>
 
       <scroll-view class="sheet-scroll" scroll-y enhanced>
-        <view wx:if="{{sheetMode === 'course-form'}}" class="sheet-form">
+        <view wx:if="{{sheetMode === 'course-stack'}}" class="sheet-list">
+          <view
+            wx:for="{{courseStackItems}}"
+            wx:key="id"
+            class="sheet-list-item"
+            bindtap="selectCourseStackItem"
+            data-id="{{item.id}}"
+          >
+            <view class="item-color" style="background: {{item.background}};"></view>
+            <view class="item-main">
+              <view class="item-title">{{item.name}}</view>
+              <view class="item-meta">{{item.timeText}}</view>
+              <view wx:if="{{item.metaText}}" class="item-meta">{{item.metaText}}</view>
+            </view>
+            <view class="item-action">打开</view>
+          </view>
+        </view>
+
+        <view wx:elif="{{sheetMode === 'course-form'}}" class="sheet-form">
           <view class="field title-field">
             <view class="label">课程名称</view>
             <input class="form-control title-input" value="{{courseForm.name}}" bindinput="onCourseNameInput" placeholder="例如：高等数学" />

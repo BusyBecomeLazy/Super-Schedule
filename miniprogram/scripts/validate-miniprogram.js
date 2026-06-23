@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { buildTimeBandCardGroups } = require("../utils/schedule-segments");
 
 const root = process.cwd();
 const expectedAppId = "wx2066bdebb597e32c";
@@ -117,6 +118,28 @@ function checkPageFiles(pages) {
   });
 }
 
+function checkTimeBandCardGrouping() {
+  const groups = buildTimeBandCardGroups([
+    { key: "first", segmentKey: "morning", dayIndex: 0, sortOrder: 540, startMinute: 540, endMinute: 600, background: "#111" },
+    { key: "overlap", segmentKey: "morning", dayIndex: 0, sortOrder: 570, startMinute: 570, endMinute: 630, background: "#222" },
+    { key: "adjacent", segmentKey: "morning", dayIndex: 0, sortOrder: 630, startMinute: 630, endMinute: 690, background: "#333" }
+  ]);
+  if (groups.length === 2 && groups[0].isStack && groups[0].items.length === 2 && !groups[1].isStack) {
+    pass("time band grouping stacks overlaps but leaves adjacent cards separate");
+  } else {
+    fail("time band grouping should stack overlaps but leave adjacent cards separate");
+  }
+  const prioritizedGroups = buildTimeBandCardGroups([
+    { key: "course", type: "course", segmentKey: "morning", dayIndex: 0, sortOrder: 480, startMinute: 480, endMinute: 580, background: "#111" },
+    { key: "event", type: "event", segmentKey: "morning", dayIndex: 0, sortOrder: 540, startMinute: 540, endMinute: 600, background: "#222" }
+  ], { priorityTypes: ["event"] });
+  if (prioritizedGroups.length === 1 && prioritizedGroups[0].main.type === "event" && prioritizedGroups[0].items[1].type === "course") {
+    pass("time band grouping can keep event cards above overlapping courses");
+  } else {
+    fail("time band grouping should keep event cards above overlapping courses when prioritized");
+  }
+}
+
 checkJson("project.config.json", (config) => {
   if (config.appid === expectedAppId && config.compileType === "miniprogram") {
     pass("project.config.json points at the expected mini program");
@@ -167,13 +190,19 @@ checkJson("app.json", (config) => {
 ].forEach(checkWxssBraces);
 
 checkLanHostSync();
+checkTimeBandCardGrouping();
 
 mustContain("custom-tab-bar/index.js", "setHidden(hidden)", "custom tab bar hide API");
 mustContain("custom-tab-bar/index.wxml", "hidden ? 'hidden' : ''", "custom tab bar hidden class binding");
 mustContain("custom-tab-bar/index.wxss", ".tabbar.hidden", "custom tab bar hidden style");
 
 mustContain("pages/calendar/index.js", "setCustomTabBarHidden", "calendar sheet hides tab bar");
-mustContain("pages/calendar/index.js", "layerStyles", "calendar overlap stack layers");
+mustContain("pages/calendar/index.js", "buildTimeBands", "calendar builds horizontal time bands");
+mustContain("pages/calendar/index.js", "buildTimeBandCardGroups", "calendar groups true overlaps");
+mustContain("pages/calendar/index.js", "priorityTypes: [\"event\"]", "calendar keeps events above overlapping courses");
+mustContain("pages/calendar/index.js", "scheduleWeekStart", "calendar publishes the selected week for tab sync");
+mustContain("pages/calendar/index.js", "scheduleSelectedDate", "calendar publishes the selected date for tab sync");
+mustContain("pages/calendar/index.js", "formatClock(period.start_time)", "calendar period times use clock formatting");
 mustContain("pages/calendar/index.wxml", "form-control title-input", "calendar title input styling");
 mustContain("pages/calendar/index.wxml", "picker-value has-arrow", "calendar picker arrow affordance");
 mustContain("pages/calendar/index.wxml", "form-control textarea-control nlp-textarea", "calendar NLP textarea styling");
@@ -185,15 +214,21 @@ mustContain("pages/calendar/index.js", "this.setCustomTabBarHidden(true);\n    t
 mustContain("pages/calendar/index.js", "parseResult: null,\n      parseTitle: \"\"", "calendar NLP input clears stale parse result");
 mustContain("pages/calendar/index.wxml", "bindtap=\"goManage\"", "calendar empty state manage action");
 mustContain("pages/calendar/index.wxml", "bindtap=\"goCreateEvent\"", "calendar empty week create action");
-mustContain("pages/calendar/index.wxml", "hover-class=\"schedule-stack-press\"", "calendar cards have press feedback");
+mustContain("pages/calendar/index.wxml", "class=\"time-band", "calendar renders horizontal time bands");
+mustContain("pages/calendar/index.wxml", "class=\"schedule-stack", "calendar renders overlap stack containers");
+mustContain("pages/calendar/index.wxml", "hover-class=\"schedule-stack-press\"", "calendar stack cards have press feedback");
 mustContain("pages/calendar/index.js", "goManage()", "calendar manage navigation");
 mustContain("pages/calendar/index.wxss", "z-index: 2147483647", "calendar sheet high z-index");
-mustContain("pages/calendar/index.wxss", ".stack-layer", "calendar card stack visual layer");
-mustContain("pages/calendar/index.wxss", ".schedule-stack-press .schedule-card", "calendar press feedback style");
+mustContain("pages/calendar/index.wxss", ".time-band-day", "calendar flex day columns");
+mustContain("pages/calendar/index.wxss", ".time-band-day .schedule-stack", "calendar keeps overlap stacks inside flex cells");
+mustContain("pages/calendar/index.wxss", "gap: 10rpx;", "calendar cards have stack spacing");
+mustContain("pages/calendar/index.wxss", "height: calc(100vh - 132rpx);", "calendar reserves the visible area above the tab bar");
+mustContain("pages/calendar/index.wxss", "flex: 1 1 0;", "calendar time bands share the available height");
+mustContain("pages/calendar/index.wxss", "height: 100%;", "calendar cards stretch to fill their cells");
+mustNotContain("pages/calendar/index.wxml", "scheduleStacks", "calendar no longer renders absolute schedule stacks");
 mustNotContain("pages/calendar/index.wxml", "box-shadow: {{item.shadow}}", "inline single-card shadow");
 mustContain("pages/calendar/index.wxss", "box-shadow: none !important", "calendar single cards force no shadow");
 mustNotContain("pages/calendar/index.wxss", "border-left: 8rpx", "thick single event edge");
-mustContain("pages/calendar/index.wxss", "box-shadow: 0 10rpx 24rpx rgba(15, 23, 42, 0.15) !important", "calendar stacked cards keep shadow");
 mustContain("pages/calendar/index.wxss", "box-shadow: 0 10rpx 24rpx rgba(21, 91, 212, 0.07)", "calendar parse result confirmation panel");
 mustContain("pages/calendar/index.wxss", ".draft-row + .draft-row", "calendar parse rows are grouped");
 mustContain("pages/calendar/index.wxss", ".grid-empty-content", "calendar grid empty content layout");
@@ -202,6 +237,10 @@ mustNotContain("pages/calendar/index.js", "个安排重叠", "old merged overlap
 mustNotContain("pages/calendar/index.js", "点击展开", "old merged overlap label");
 
 mustContain("pages/course/index.js", "setCustomTabBarHidden", "course sheet hides tab bar");
+mustContain("pages/course/index.js", "scheduleWeekStart", "course follows the selected calendar week");
+mustContain("pages/course/index.js", "currentSyncedWeekStart", "course uses the natural week as display source");
+mustContain("pages/course/index.js", "scheduleSelectedDate", "course can return to the real selected date");
+mustNotContain("pages/course/index.js", "weekStartForTeachingWeek", "course no longer derives display week from teaching week");
 mustContain("pages/course/index.wxml", "form-control title-input", "course title input styling");
 mustContain("pages/course/index.wxml", "form-control textarea-control nlp-textarea", "course NLP textarea styling");
 mustContain("pages/course/index.wxml", "wx:if=\"{{nlpVisible}}\" class=\"sheet-host\"", "course NLP uses bottom sheet");
@@ -212,10 +251,20 @@ mustContain("pages/course/index.js", "this.setCustomTabBarHidden(true);\n    thi
 mustContain("pages/course/index.js", "parseResult: null,\n      parseTitle: \"\"", "course NLP input clears stale parse result");
 mustContain("pages/course/index.wxml", "bindtap=\"goManage\"", "course empty state manage action");
 mustContain("pages/course/index.wxml", "bindtap=\"goCreateCourse\"", "course empty week create action");
-mustContain("pages/course/index.wxml", "hover-class=\"course-card-press\"", "course cards have press feedback");
+mustContain("pages/course/index.js", "buildTimeBands", "course builds horizontal time bands");
+mustContain("pages/course/index.js", "buildTimeBandCardGroups", "course groups true overlaps");
+mustContain("pages/course/index.wxml", "class=\"time-band", "course renders horizontal time bands");
+mustContain("pages/course/index.wxml", "class=\"course-stack", "course renders overlap stack containers");
+mustContain("pages/course/index.wxml", "hover-class=\"course-stack-press\"", "course stack cards have press feedback");
 mustContain("pages/course/index.js", "goManage()", "course manage navigation");
 mustContain("pages/course/index.wxss", "z-index: 2147483647", "course sheet high z-index");
-mustContain("pages/course/index.wxss", ".course-card-press", "course press feedback style");
+mustContain("pages/course/index.wxss", ".course-stack-press", "course stack press feedback style");
+mustContain("pages/course/index.wxss", ".time-band-day", "course flex day columns");
+mustContain("pages/course/index.wxss", ".time-band-day .course-stack", "course keeps overlap stacks inside flex cells");
+mustContain("pages/course/index.wxss", "gap: 10rpx;", "course cards have stack spacing");
+mustContain("pages/course/index.wxss", "height: calc(100vh - 132rpx);", "course reserves the visible area above the tab bar");
+mustContain("pages/course/index.wxss", "flex: 1 1 0;", "course time bands share the available height");
+mustContain("pages/course/index.wxss", "height: 100%;", "course cards stretch to fill their cells");
 mustNotContain("pages/course/index.wxml", "box-shadow: {{item.shadow}}", "inline course-card shadow");
 mustContain("pages/course/index.wxss", "box-shadow: none !important", "course cards force no shadow");
 mustContain("pages/course/index.wxss", "box-shadow: 0 10rpx 24rpx rgba(21, 91, 212, 0.07)", "course parse result confirmation panel");
